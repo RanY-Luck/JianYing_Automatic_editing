@@ -2,8 +2,7 @@
 素材管理 API 路由
 """
 from fastapi import APIRouter, UploadFile, File, Form
-from loguru import logger
-
+from backend.utils.logger import logger
 from backend.app.material.schema.material import (
     MaterialCreateParam,
     MaterialListSchema,
