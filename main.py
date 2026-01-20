@@ -111,11 +111,14 @@ from backend.app.material.api.v1 import material as material_router
 from backend.app.draft.api.v1 import draft as draft_router
 from backend.app.template.api.v1 import template as template_router
 from backend.app.task.api.v1 import task as task_router
+from backend.app.api.v1 import editor as editor_router
+
 
 app.include_router(material_router.router, prefix="/api/v1", tags=["素材管理"])
 app.include_router(draft_router.router, prefix="/api/v1", tags=["草稿管理"])
 app.include_router(template_router.router, prefix="/api/v1/templates", tags=["模板管理"])
 app.include_router(task_router.router, prefix="/api/v1", tags=["任务管理"])
+app.include_router(editor_router.router, prefix="/api/v1/editor", tags=["高级编辑"])
 
 if __name__ == "__main__":
     import uvicorn
