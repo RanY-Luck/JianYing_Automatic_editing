@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     )
     
     jianying_version: str = Field(
-        default="6.0.1",
+        default="5.9.0",
         description="剪映版本"
     )
     
