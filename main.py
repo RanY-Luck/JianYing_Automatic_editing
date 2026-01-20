@@ -13,7 +13,6 @@ from backend.common.exception import BaseAPIException
 from backend.common.response import response_base
 from backend.core.conf import app_config, settings
 from backend.core.database import close_db, create_tables, init_db
-from backend.utils.logger import setup_logger
 
 
 @asynccontextmanager
@@ -21,17 +20,17 @@ async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # 启动时执行
     logger.info("应用启动中...")
-    
+
     # 初始化数据库
     await init_db()
     logger.info("数据库连接初始化完成")
-    
+
     # 创建数据库表
     await create_tables()
     logger.info("数据库表创建完成")
-    
+
     yield
-    
+
     # 关闭时执行
     logger.info("应用关闭中...")
     await close_db()
@@ -111,16 +110,16 @@ async def root():
 from backend.app.material.api.v1 import material as material_router
 from backend.app.draft.api.v1 import draft as draft_router
 from backend.app.template.api.v1 import template as template_router
+from backend.app.task.api.v1 import task as task_router
 
 app.include_router(material_router.router, prefix="/api/v1", tags=["素材管理"])
 app.include_router(draft_router.router, prefix="/api/v1", tags=["草稿管理"])
 app.include_router(template_router.router, prefix="/api/v1/templates", tags=["模板管理"])
-
-
+app.include_router(task_router.router, prefix="/api/v1", tags=["任务管理"])
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     uvicorn.run(
         "main:app",
         host=settings.server_host,
