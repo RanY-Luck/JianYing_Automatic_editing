@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Body
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from backend.app.task.service.editor_service import editor_service
 from backend.common.response import response_base, ResponseSchemaModel
 from backend.core.deps import CurrentSession
@@ -161,4 +161,84 @@ async def add_sticker(
     """
     await editor_service.add_sticker(db, draft_id, sticker_path, start_time, duration, position, scale)
     return response_base.success(msg="添加贴纸成功")
+
+@router.post("/draft/{draft_id}/remove-silence", summary="删除静音片段")
+async def remove_silence(
+    draft_id: int,
+    db: CurrentSession,
+    silence_threshold: float = Body(-40.0, description="静音阈值(dB)"),
+    min_silence_duration: float = Body(0.5, description="最小静音时长(秒)"),
+) -> ResponseSchemaModel:
+    """
+    删除草稿中的静音片段
+    
+    使用音频分析自动检测并删除静音部分
+    需要安装: pip install pydub
+    """
+    await editor_service.remove_silence(db, draft_id, silence_threshold, min_silence_duration)
+    return response_base.success(msg="删除静音片段成功")
+
+@router.get("/draft/{draft_id}/highlights", summary="提取高光片段")
+async def extract_highlights(
+    draft_id: int,
+    db: CurrentSession,
+    threshold_percentile: float = 80.0,
+    min_highlight_duration: float = 2.0,
+) -> ResponseSchemaModel:
+    """
+    提取草稿中的高光片段(音量峰值)
+    
+    返回高光片段的时间范围列表
+    """
+    highlights = await editor_service.extract_highlights(
+        db, draft_id, threshold_percentile, min_highlight_duration
+    )
+    return response_base.success(data=highlights, msg="提取高光片段成功")
+
+@router.post("/draft/{draft_id}/apply-template", summary="应用模板")
+async def apply_template(
+    draft_id: int,
+    db: CurrentSession,
+    template_config: Dict[str, Any] = Body(..., description="模板配置"),
+) -> ResponseSchemaModel:
+    """
+    应用模板到草稿
+    
+    template_config 示例:
+    {
+        "filter": {"name": "vintage_1980", "intensity": 0.8},
+        "transition": {"name": "fade", "duration": 0.5},
+        "subtitles": [
+            {
+                "text": "标题",
+                "start_time": 0.0,
+                "duration": 3.0,
+                "font_size": 60,
+                "font_color": "#FFD700"
+            }
+        ],
+        "color_adjustments": {
+            "brightness": 0.2,
+            "saturation": 0.3
+        },
+        "smart_dedup": true,
+        "dedup_config": {"speed": true, "mirror": true}
+    }
+    """
+    await editor_service.apply_template(db, draft_id, template_config)
+    return response_base.success(msg="应用模板成功")
+
+@router.post("/batch/apply-template", summary="批量应用模板")
+async def batch_apply_template(
+    db: CurrentSession,
+    draft_ids: List[int] = Body(..., description="草稿ID列表"),
+    template_config: Dict[str, Any] = Body(..., description="模板配置"),
+) -> ResponseSchemaModel:
+    """
+    批量应用模板到多个草稿
+    
+    返回每个草稿的处理结果
+    """
+    results = await editor_service.batch_apply_template(db, draft_ids, template_config)
+    return response_base.success(data=results, msg="批量应用模板完成")
 

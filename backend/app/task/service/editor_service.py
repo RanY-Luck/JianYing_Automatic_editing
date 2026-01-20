@@ -11,6 +11,8 @@ from backend.common.exception import NotFoundError, BadRequestError
 from backend.integrations.jianying_api.draft_editor import DraftEditor
 from backend.integrations.py_jianying.effect_manager import effect_manager
 from backend.integrations.py_jianying.track_manager import track_manager
+from backend.integrations.jianying_api.smart_editor import smart_editor
+from backend.integrations.jianying_api.template_engine import template_engine
 
 class EditorService:
     """编辑器服务"""
@@ -427,6 +429,160 @@ class EditorService:
         # 保存
         with open(content_path, "w", encoding="utf-8") as f:
             json.dump(content, f, ensure_ascii=False, indent=2)
+    
+    async def remove_silence(
+        self,
+        db: AsyncSession,
+        draft_id: int,
+        silence_threshold: float = -40.0,
+        min_silence_duration: float = 0.5
+    ) -> bool:
+        """
+        删除草稿中的静音片段
+        
+        :param db: 数据库会话
+        :param draft_id: 草稿 ID
+        :param silence_threshold: 静音阈值 (dB)
+        :param min_silence_duration: 最小静音时长(秒)
+        :return: 是否成功
+        """
+        draft = await crud_draft.get(db, draft_id)
+        if not draft:
+            raise NotFoundError()
+
+        content_path = os.path.join(draft.draft_path, "draft_content.json")
+        if not os.path.exists(content_path):
+            raise BadRequestError(message="草稿内容文件不存在")
+
+        try:
+            with open(content_path, "r", encoding="utf-8") as f:
+                content = json.load(f)
+
+            # 使用智能编辑器删除静音
+            new_content = smart_editor.remove_silence(
+                content,
+                silence_threshold,
+                min_silence_duration
+            )
+            
+            self._save_draft_content(content_path, new_content)
+            logger.info(f"删除静音片段成功: {draft_id}")
+            return True
+
+        except Exception as e:
+            logger.error(f"删除静音片段失败: {e}")
+            raise BadRequestError(message=f"删除静音片段失败: {str(e)}")
+    
+    async def extract_highlights(
+        self,
+        db: AsyncSession,
+        draft_id: int,
+        threshold_percentile: float = 80.0,
+        min_highlight_duration: float = 2.0
+    ) -> List[Dict]:
+        """
+        提取草稿中的高光片段
+        
+        :param db: 数据库会话
+        :param draft_id: 草稿 ID
+        :param threshold_percentile: 音量阈值百分位
+        :param min_highlight_duration: 最小高光时长(秒)
+        :return: 高光片段列表
+        """
+        draft = await crud_draft.get(db, draft_id)
+        if not draft:
+            raise NotFoundError()
+
+        content_path = os.path.join(draft.draft_path, "draft_content.json")
+        if not os.path.exists(content_path):
+            raise BadRequestError(message="草稿内容文件不存在")
+
+        try:
+            with open(content_path, "r", encoding="utf-8") as f:
+                content = json.load(f)
+
+            # 使用智能编辑器提取高光
+            highlights = smart_editor.extract_highlights(
+                content,
+                threshold_percentile,
+                min_highlight_duration
+            )
+            
+            logger.info(f"提取高光片段成功: {draft_id}")
+            return highlights
+
+        except Exception as e:
+            logger.error(f"提取高光片段失败: {e}")
+            raise BadRequestError(message=f"提取高光片段失败: {str(e)}")
+    
+    async def apply_template(
+        self,
+        db: AsyncSession,
+        draft_id: int,
+        template_config: Dict[str, Any]
+    ) -> bool:
+        """
+        应用模板到草稿
+        
+        :param db: 数据库会话
+        :param draft_id: 草稿 ID
+        :param template_config: 模板配置
+        :return: 是否成功
+        """
+        draft = await crud_draft.get(db, draft_id)
+        if not draft:
+            raise NotFoundError()
+
+        content_path = os.path.join(draft.draft_path, "draft_content.json")
+        if not os.path.exists(content_path):
+            raise BadRequestError(message="草稿内容文件不存在")
+
+        try:
+            with open(content_path, "r", encoding="utf-8") as f:
+                content = json.load(f)
+
+            # 使用模板引擎应用模板
+            new_content = template_engine.apply_template(content, template_config)
+            
+            self._save_draft_content(content_path, new_content)
+            logger.info(f"应用模板成功: {draft_id}")
+            return True
+
+        except Exception as e:
+            logger.error(f"应用模板失败: {e}")
+            raise BadRequestError(message=f"应用模板失败: {str(e)}")
+    
+    async def batch_apply_template(
+        self,
+        db: AsyncSession,
+        draft_ids: List[int],
+        template_config: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """
+        批量应用模板到多个草稿
+        
+        :param db: 数据库会话
+        :param draft_ids: 草稿 ID 列表
+        :param template_config: 模板配置
+        :return: 处理结果列表
+        """
+        results = []
+        
+        for draft_id in draft_ids:
+            try:
+                success = await self.apply_template(db, draft_id, template_config)
+                results.append({
+                    "draft_id": draft_id,
+                    "success": success
+                })
+            except Exception as e:
+                results.append({
+                    "draft_id": draft_id,
+                    "success": False,
+                    "error": str(e)
+                })
+        
+        return results
 
 editor_service = EditorService()
 
