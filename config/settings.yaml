@@ -1,0 +1,97 @@
+app:
+  name: "剪映自动剪辑系统"
+  version: "1.0.0"
+  debug: true
+  description: "基于 JianYingApi 和 PyJianying 的自动化视频剪辑系统"
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  reload: true  # 开发模式下自动重载
+
+jianying:
+  version: "6.0.1"
+  auto_save_interval: 60  # 自动保存间隔（秒）
+  max_draft_size: 1073741824  # 最大草稿大小（1GB）
+  
+  # 剪映 6.0.1 特殊配置
+  encrypted_draft: true  # 草稿文件是否加密
+  use_ui_automation: true  # 是否使用 UI 自动化（用于导出）
+
+export:
+  resolutions:
+    - "3840x2160"  # 4K
+    - "2560x1440"  # 2K
+    - "1920x1080"  # 1080P
+    - "1280x720"   # 720P
+    - "854x480"    # 480P
+  
+  fps_options:
+    - 24
+    - 30
+    - 60
+  
+  max_queue_size: 10
+  timeout: 3600  # 导出超时时间（秒）
+  
+  # UI 自动化配置（针对剪映 6.0.1）
+  ui_automation:
+    wait_timeout: 30  # UI 元素等待超时（秒）
+    retry_times: 3
+    retry_delay: 2  # 重试延迟（秒）
+
+task:
+  max_concurrent_tasks: 5
+  retry_times: 3
+  retry_delay: 5  # 重试延迟（秒）
+  task_timeout: 1800  # 任务超时时间（秒）
+
+material:
+  allowed_video_formats:
+    - ".mp4"
+    - ".mov"
+    - ".avi"
+    - ".mkv"
+    - ".flv"
+    - ".wmv"
+  
+  allowed_audio_formats:
+    - ".mp3"
+    - ".wav"
+    - ".aac"
+    - ".m4a"
+    - ".flac"
+  
+  allowed_image_formats:
+    - ".jpg"
+    - ".jpeg"
+    - ".png"
+    - ".gif"
+    - ".bmp"
+    - ".webp"
+  
+  max_file_size: 5368709120  # 5GB
+
+security:
+  jwt_algorithm: "HS256"
+  jwt_expire_hours: 24
+  password_min_length: 8
+  
+  # CORS 配置
+  cors:
+    allow_origins:
+      - "http://localhost:3000"
+      - "http://localhost:5173"
+    allow_credentials: true
+    allow_methods:
+      - "*"
+    allow_headers:
+      - "*"
+
+database:
+  pool_size: 10
+  max_overflow: 20
+  pool_timeout: 30
+  pool_recycle: 3600
+  echo: false  # 生产环境设置为 false
