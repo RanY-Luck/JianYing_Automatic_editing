@@ -18,9 +18,18 @@ class ResponseSchemaModel(BaseModel, Generic[T]):
     timestamp: datetime = Field(default_factory=datetime.now, description="响应时间")
     
     class Config:
+        # Pydantic V1 配置
         json_encoders = {
             datetime: lambda v: v.strftime("%Y-%m-%d %H:%M:%S")
         }
+    
+    def model_dump(self, **kwargs):
+        """重写 model_dump 以确保 datetime 正确序列化"""
+        data = super().model_dump(**kwargs)
+        # 手动转换 timestamp
+        if isinstance(data.get('timestamp'), datetime):
+            data['timestamp'] = data['timestamp'].strftime("%Y-%m-%d %H:%M:%S")
+        return data
 
 
 class ResponseBase:

@@ -1,21 +1,101 @@
 """
 模板 CRUD 层
 """
-from typing import Optional
-
-from sqlalchemy import Select, select
+from typing import Optional, Dict, Any
+from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy_crud_plus import CRUDPlus
 
 from backend.app.template.model.template import Template
+from backend.app.template.schema.template import TemplateCreate, TemplateUpdate
 
 
-class CRUDTemplate(CRUDPlus[Template]):
+class CRUDTemplate:
     """
     模板 CRUD 操作
     
-    NOTE: 继承 CRUDPlus,提供基础 CRUD 操作
+    NOTE: 提供模板的基础 CRUD 操作
     """
+    
+    def __init__(self):
+        self.model = Template
+    
+    async def create(self, db: AsyncSession, obj_in: TemplateCreate) -> Template:
+        """
+        创建模板
+        
+        :param db: 数据库会话
+        :param obj_in: 创建参数
+        :return: 模板对象
+        """
+        db_obj = self.model(**obj_in.model_dump())
+        db.add(db_obj)
+        await db.flush()
+        await db.refresh(db_obj)
+        return db_obj
+    
+    async def get(self, db: AsyncSession, pk: int) -> Optional[Template]:
+        """
+        根据 ID 获取模板
+        
+        :param db: 数据库会话
+        :param pk: 模板 ID
+        :return: 模板对象
+        """
+        stmt = select(self.model).where(self.model.id == pk)
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+    
+    async def get_multi(
+        self,
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100
+    ) -> list[Template]:
+        """
+        获取模板列表
+        
+        :param db: 数据库会话
+        :param skip: 跳过数量
+        :param limit: 限制数量
+        :return: 模板列表
+        """
+        stmt = select(self.model).offset(skip).limit(limit)
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+    
+    async def update(self, db: AsyncSession, pk: int, obj_in: TemplateUpdate) -> Template:
+        """
+        更新模板
+        
+        :param db: 数据库会话
+        :param pk: 模板 ID
+        :param obj_in: 更新参数
+        :return: 模板对象
+        """
+        update_data = obj_in.model_dump(exclude_unset=True)
+        stmt = (
+            update(self.model)
+            .where(self.model.id == pk)
+            .values(**update_data)
+        )
+        await db.execute(stmt)
+        await db.flush()
+        
+        # 重新查询更新后的对象
+        return await self.get(db, pk)
+    
+    async def delete(self, db: AsyncSession, pk: int) -> bool:
+        """
+        删除模板
+        
+        :param db: 数据库会话
+        :param pk: 模板 ID
+        :return: 是否成功
+        """
+        stmt = delete(self.model).where(self.model.id == pk)
+        await db.execute(stmt)
+        await db.flush()
+        return True
     
     async def get_by_name(self, db: AsyncSession, name: str) -> Optional[Template]:
         """
@@ -105,4 +185,4 @@ class CRUDTemplate(CRUDPlus[Template]):
 
 
 # 单例实例
-crud_template = CRUDTemplate(Template)
+crud_template = CRUDTemplate()

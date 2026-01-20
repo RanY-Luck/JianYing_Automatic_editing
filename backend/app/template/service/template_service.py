@@ -56,7 +56,7 @@ class TemplateService:
         """
         template = await crud_template.get(db, pk)
         if not template:
-            raise NotFoundError(msg=f"模板不存在: {pk}")
+            raise NotFoundError()
         
         return template
     

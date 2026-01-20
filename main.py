@@ -61,13 +61,17 @@ app.add_middleware(
 async def api_exception_handler(request: Request, exc: BaseAPIException):
     """处理自定义 API 异常"""
     logger.error(f"API 异常: {exc.message}")
+    
+    # 使用 model_dump 并手动序列化,避免 datetime 序列化问题
+    response_data = response_base.error(
+        message=exc.message,
+        code=exc.code,
+        data=exc.data
+    )
+    
     return JSONResponse(
         status_code=exc.code,
-        content=response_base.error(
-            message=exc.message,
-            code=exc.code,
-            data=exc.data
-        ).model_dump()
+        content=response_data.model_dump(mode='json')
     )
 
 

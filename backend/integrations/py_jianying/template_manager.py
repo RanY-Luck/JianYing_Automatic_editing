@@ -289,28 +289,85 @@ class TemplateManager:
         """
         验证模板格式
         
+        支持两种格式:
+        1. PyJianying 格式 (旧): 包含 name, tracks, materials_mapping
+        2. TemplateEngine 格式 (新): 包含 filter, transition, subtitles 等
+        
         :param template_data: 模板数据
         :return: 是否有效
         """
         try:
-            # 检查必需字段
-            required_fields = ['name', 'tracks', 'materials_mapping']
-            for field in required_fields:
-                if field not in template_data:
-                    logger.error(f"模板缺少必需字段: {field}")
+            # 检查是否为空
+            if not template_data or not isinstance(template_data, dict):
+                logger.error("模板数据为空或格式错误")
+                return False
+            
+            # 检查是否为 PyJianying 格式 (旧格式)
+            if 'tracks' in template_data and 'materials_mapping' in template_data:
+                # 旧格式验证
+                required_fields = ['name', 'tracks', 'materials_mapping']
+                for field in required_fields:
+                    if field not in template_data:
+                        logger.error(f"模板缺少必需字段: {field}")
+                        return False
+                
+                # 检查轨道格式
+                if not isinstance(template_data['tracks'], list):
+                    logger.error("模板 tracks 字段必须是数组")
+                    return False
+                
+                # 检查素材映射格式
+                if not isinstance(template_data['materials_mapping'], dict):
+                    logger.error("模板 materials_mapping 字段必须是对象")
+                    return False
+                
+                logger.info("模板验证通过 (PyJianying 格式)")
+                return True
+            
+            # 检查是否为 TemplateEngine 格式 (新格式)
+            # 新格式只要是有效的 dict 即可,可以包含以下可选字段:
+            # - filter, transition, subtitles, color_adjustments, smart_dedup
+            valid_fields = {
+                'name', 'version', 'description',
+                'filter', 'transition', 'subtitles', 
+                'color_adjustments', 'smart_dedup', 'dedup_config'
+            }
+            
+            # 检查是否至少有一个有效字段
+            has_valid_field = any(key in valid_fields for key in template_data.keys())
+            
+            if not has_valid_field:
+                logger.error(f"模板不包含任何有效字段。有效字段: {valid_fields}")
+                return False
+            
+            # 验证各个字段的格式
+            if 'filter' in template_data:
+                if not isinstance(template_data['filter'], dict):
+                    logger.error("filter 字段必须是对象")
+                    return False
+                if 'name' not in template_data['filter']:
+                    logger.error("filter 必须包含 name 字段")
                     return False
             
-            # 检查轨道格式
-            if not isinstance(template_data['tracks'], list):
-                logger.error("模板 tracks 字段必须是数组")
-                return False
+            if 'transition' in template_data:
+                if not isinstance(template_data['transition'], dict):
+                    logger.error("transition 字段必须是对象")
+                    return False
+                if 'name' not in template_data['transition']:
+                    logger.error("transition 必须包含 name 字段")
+                    return False
             
-            # 检查素材映射格式
-            if not isinstance(template_data['materials_mapping'], dict):
-                logger.error("模板 materials_mapping 字段必须是对象")
-                return False
+            if 'subtitles' in template_data:
+                if not isinstance(template_data['subtitles'], list):
+                    logger.error("subtitles 字段必须是数组")
+                    return False
             
-            logger.info("模板验证通过")
+            if 'color_adjustments' in template_data:
+                if not isinstance(template_data['color_adjustments'], dict):
+                    logger.error("color_adjustments 字段必须是对象")
+                    return False
+            
+            logger.info("模板验证通过 (TemplateEngine 格式)")
             return True
         
         except Exception as e:
